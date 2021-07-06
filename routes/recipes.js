@@ -1,14 +1,18 @@
 var express = require('express');
-var router = express.Router();
-const fs = require('fs')
-const path = require('path');
 
-let rawdata = fs.readFileSync(path.resolve(__dirname, 'recipes.json'));
-let recipesData = JSON.parse(rawdata);
+const api = require('../DAL/api');
+
+var router = express.Router();
+// const fs = require('fs')
+// const path = require('path');
+
+// let rawdata = fs.readFileSync(path.resolve(__dirname, 'recipes.json'));
+// let recipesData = JSON.parse(rawdata);
 
 /* GET users listing. */
-router.get('/', function (req, res, next) {
-    res.send(recipesData);
+router.get('/', async function (req, res) {
+    const recipes = await api.recipes();
+    res.json(recipes);
 });
 
 // router.get('/:recipeId', function(req,res){

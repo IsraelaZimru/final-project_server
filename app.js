@@ -7,11 +7,12 @@ const bodyPraser = require('body-parser')
 
 
 const app = express();
-app.listen(3100);
+// app.listen(3100, () => console.log('listen on localhost 3100 '));
 
 const indexRouter = require('./routes/index');
 const usersRouter = require('./routes/users');
 const myRecipes = require('./routes/recipes');
+const addUser = require('./routes/addUser');
 
 
 app.use(cors({
@@ -27,7 +28,9 @@ app.use(bodyPraser.urlencoded())
 
 
 app.use('/users', usersRouter);
+app.use('/addUser', addUser);
 app.use('/recipes', myRecipes);
 app.use('/', indexRouter);
 
 module.exports = app;
+
