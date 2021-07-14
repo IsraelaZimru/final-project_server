@@ -76,7 +76,6 @@ const recipeInfo = async (recipeId) => {
 }
 
 
-
 const newUser = async (firstName, lastName, password, email) => {
     const [user, fields] = await db.execute(`INSERT INTO users (firstName, lastName, password, email) VALUES
         ("${firstName}", "${lastName}", "${password}", "${email}")`)
@@ -107,11 +106,117 @@ const updateUser = async (id, firstName, lastName, password, email) => {
     }
 }
 
+const login = async (email, password) => {
+    try {
+        const [result, fields] = await db.execute(`SELECT id,firstname as 'name',email FROM users WHERE email = ? and password = ?`, [email, password]);
+
+        return result[0];
+
+    } catch (error) {
+        throw new Error('Unknown error');
+    }
+}
+//addNewRecipe(formInputs)
+const addNewRecipe = async (recipe, ingredients, instructions) => {
+    try {
+        // console.log(ingredients)
+        const query = `SET @id = ?; SET @name = ? ; SET @userID = ?; SET @description = ?; SET @level = ?; SET @Servings = ?;
+        SET @prepTimeMins = ?; SET @CookingTime = ?;
+        call add_or_change_recipe(@id, @name, @userID, @description, @level, @Servings, @prepTimeMins, @CookingTime);`
+
+        const { CookingTime, Servings, prepTimeMins, recipeName, userId, description, level, categories, diets } = recipe;
+        const [newRecipe, fields] = await db.query(query, [0, recipeName, userId, description, level, Servings, prepTimeMins, CookingTime])
+        const newRecipeId = await newRecipe.find(element => element.constructor === Array)
+        const flatingredientsData = ingredients.flatMap(ele => [ele.ingredient.id, ele.unit.id, ele.quantity])
+
+        const temp = `(${newRecipeId[0].id},?), `.repeat(categories.length).slice(0, -2)
+        const temp2 = `(${newRecipeId[0].id},?), `.repeat(diets.length).slice(0, -2)
+        const temp3 = `(${newRecipeId[0].id},?), `.repeat(instructions.length).slice(0, -2)
+        const temp4 = `(${newRecipeId[0].id},?, ?, ?), `.repeat(ingredients.length).slice(0, -2)
+
+
+
+
+        const categoriesDietsInstructionQuery = `INSERT INTO recipecategory (recipeId, CategoryTypeId) VALUES ${temp};
+         INSERT INTO recipediet (recipeId, DietId) VALUES ${temp2};
+         INSERT INTO instructions (recipeId,instruction) VALUES ${temp3};
+         INSERT INTO recipeingredients (recipeID, IngredientID, MeasuringUnitID, Quantity) VALUES ${temp4};`
+
+        const t = [...categories, ...diets, ...instructions, ...flatingredientsData]
+        // console.log(categoriesDietsInstructionQuery, t);
+        const [moreInfo, fieldsC] = await db.query(categoriesDietsInstructionQuery, [...t]);
+
+        return newRecipeId[0].id;
+    } catch (err) {
+        console.log(err);;
+    }
+}
+
+
+const getDietsCategoriesInfo = async () => {
+    try {
+        const [data, fields] = await db.query('Select id,name from diets;Select id,name from categories');
+        // const [categories, fieldsc] = await db.execute('Select id,name from categories');
+        return data;
+    } catch (err) {
+        console.log(err);
+    }
+}
+
+const checkAvailable = async (name) => {
+    try {
+        const [data, fields] = await db.execute('Select * from recipes where name = ?', [name]);
+        if (data.length === 0) {
+            return true;
+        } else {
+            return false;
+        }
+    } catch (err) {
+        console.log(err);
+    }
+}
+
+const unitsAndIngs = async () => {
+    try {
+        const [data, fields] = await db.query('Select id,name from ingredients;Select id,name from measuringunits');
+        // const [categories, fieldsc] = await db.execute('Select id,name from categories');
+        return data;
+    } catch (err) {
+        console.log(err);
+    }
+}
+
+const addImage = async (imageName, idRecipe) => {
+    try {
+        const [data, fields] = await db.execute(`UPDATE recipes SET image = ? WHERE id = ?;`, ["images/" + imageName, idRecipe]);
+        return data;
+    } catch (err) {
+        console.log(err);
+    }
+}
+
+const deleteRecipe = async (id) => {
+    try {
+        const [data, fields] = await db.query(`SET @id = ?; CALL delete_recipe_data_from_linked_tables(@id);`, [id]);
+        return data;
+    } catch (err) {
+        console.log(err);
+    }
+}
+
+
 module.exports = {
     recipes,
     onlyRecipesName,
     onlyingredientsName,
     newUser,
     recipeInfo,
-    updateUser
+    updateUser,
+    login,
+    addNewRecipe,
+    getDietsCategoriesInfo,
+    checkAvailable,
+    unitsAndIngs,
+    addImage,
+    deleteRecipe
 }

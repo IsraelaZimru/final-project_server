@@ -17,14 +17,26 @@ router.post('/getUserInfo', function (req, res) {
 
 
 
-router.post('/', function (req, res) {
-  db.execute(`SELECT id,firstname as 'name',email FROM users WHERE email="${req.body.email}" and password="${req.body.password}"`)
-    .then(result => result[0])
-    .then(user => {
-      console.log(user);
-      res.send(user)
+router.post('/login', async function (req, res) {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    res.status(401).json({ error: 'email or password incorrect' });
+    return;
+  }
+
+  try {
+    const result = await api.login(email, password);
+    if (result) {
+      res.cookie('user', result);
+      res.status(200).json(result);
+    }
+    else res.status(401).json({ error: 'email or password incorrect' });
+  } catch (error) {
+    res.status(500).json({
+      error: error.message
     })
-    .catch((err) => res.status(404).send(err));
+  }
 });
 
 //לוודא שהפרמטרים תקינים - לוודא שיש בכלל יוזר עם ת.ז הזו, אחרת לשלוח הודעת שגיאה 
