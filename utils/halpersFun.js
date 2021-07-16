@@ -22,5 +22,51 @@ const addingredientsToRecipe = ([recipe, ingredients]) => {
     recipe[0]["ingredients"] = newArr;
 }
 
+const organizedData = (recipe) => {
+    // console.log("recipe", recipe);
+    const [data] = recipe[0];
+    const categories = recipe[1].map(cat => cat.id)
+    const diets = recipe[2].map(diet => diet.id)
 
-module.exports = { mergeTwoSQLTable, addingredientsToRecipe };
+    data["categories"] = categories;
+    data["diets"] = diets;
+    // console.log("data", data);
+
+    return data;
+}
+
+const organizedIngredients = (obj) => {
+    console.log("obj", obj);
+    const organizedData = obj.map(el => {
+        return {
+            ingredient: {
+                id: el.ingredientId,
+                name: el.ingredientName
+            },
+            unit: {
+                id: el.unitId,
+                name: el.unitName
+            },
+            quantity: el.Quantity
+        }
+    })
+    console.log("organizedData", organizedData);
+    return organizedData;
+}
+
+const organizedinstructions = (obj) => {
+    const organizedData = obj.map(el => {
+        return `${el.instruction}`
+    })
+    console.log("organizedData", organizedData);
+    return organizedData;
+}
+
+
+module.exports = {
+    mergeTwoSQLTable,
+    addingredientsToRecipe,
+    organizedData,
+    organizedIngredients,
+    organizedinstructions
+};

@@ -1,5 +1,5 @@
 const db = require('../utils/database') // mysql2.pool.promise()
-const { mergeTwoSQLTable, addingredientsToRecipe } = require('../utils/halpersFun')
+const { mergeTwoSQLTable, addingredientsToRecipe, organizedData, organizedIngredients, organizedinstructions } = require('../utils/halpersFun')
 
 // const recipes = async () => {
 //     // const [recipes, fields] = await db.execute('Select * from recipes r inner join images i on r.imageID = i.id ');
@@ -45,12 +45,37 @@ const recipes = async () => {
 
 
 
+const recipeInfoRow = async (recipeId) => {
+    try {
+        const [recipe, fields] = await db.query(`select id,userId,name as "recipeName", description,level,Servings,prepTimeMins,CookingTime from recipes where id = ?; select categories.id as "id" from recipecategory join categories on recipecategory.CategoryTypeId = categories.id
+        where recipeId = ?; select diets.id as "id" from recipediet join diets on recipediet.DietId = diets.id where recipeId = ?;`, [recipeId, recipeId, recipeId]);
+
+        const [ingredients, fieldI] = await db.query(`SELECT i.id as ingredientId, i.name as ingredientName, m.id as unitId, m.name as unitName, ri.Quantity FROM recipeingredients as ri
+        join ingredients as i on ri.IngredientID = i.id
+        join measuringunits as m on ri.MeasuringUnitID = m.id
+        where recipeID = ?`, [recipeId])
+
+        const [instructions, fieldi] = await db.query(`SELECT instruction FROM  instructions where recipeId = ?`, [recipeId])
+
+        const step1 = await organizedData(recipe);
+        const step2 = await organizedIngredients(ingredients);
+        const step3 = await organizedinstructions(instructions);
+
+
+        return [step1, step2, step3];
+    } catch (err) {
+        console.log(err);;
+    }
+}
+
 
 
 
 const recipeInfo = async (recipeId) => {
     try {
-        const [recipe, fields] = await db.execute(`select recipes.*,users.firstname "username" from recipes join users 
+        const [updateViews, fieldViews] = await db.query(`select @_view := (select views from recipes WHERE id = ?) + 1;
+        UPDATE recipes SET views = @_view WHERE id = ?;`, [recipeId, recipeId]);
+        const [recipe, fields] = await db.query(`select recipes.*,users.firstname "username" from recipes join users 
         on recipes.userid = users.id where recipes.id = ?`, [recipeId]);
         const [categories, fieldsC] = await db.execute('select name, recipeId from recipecategory join categories on recipecategory.CategoryTypeId = categories.id', [recipeId]);
         const [instructions, fieldsI] = await db.execute('select recipeId,instruction "name" from instructions where recipeId = ?', [recipeId]);
@@ -94,7 +119,6 @@ const onlyingredientsName = async () => {
 
 const updateUser = async (id, firstName, lastName, password, email) => {
     try {
-        // const [userid, fields] = await db.query('Select * from recipes; Select * from users');
         const myquery = "SET @id= ?; SET @firstName= ?;SET @lastName= ?;SET @password= ?;SET @email= ?; \
         call add_or_change_user(@id, @firstName, @lastName, @password, @email)"
 
@@ -143,7 +167,6 @@ const addNewRecipe = async (recipe, ingredients, instructions) => {
          INSERT INTO recipeingredients (recipeID, IngredientID, MeasuringUnitID, Quantity) VALUES ${temp4};`
 
         const t = [...categories, ...diets, ...instructions, ...flatingredientsData]
-        // console.log(categoriesDietsInstructionQuery, t);
         const [moreInfo, fieldsC] = await db.query(categoriesDietsInstructionQuery, [...t]);
 
         return newRecipeId[0].id;
@@ -218,5 +241,6 @@ module.exports = {
     checkAvailable,
     unitsAndIngs,
     addImage,
-    deleteRecipe
+    deleteRecipe,
+    recipeInfoRow
 }
