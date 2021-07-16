@@ -108,7 +108,7 @@ const newUser = async (firstName, lastName, password, email) => {
 }
 
 const onlyRecipesName = async () => {
-    const [names, fields] = await db.execute('Select name from recipes');
+    const [names, fields] = await db.execute('Select id,name from recipes');
     return names;
 }
 
@@ -140,10 +140,9 @@ const login = async (email, password) => {
         throw new Error('Unknown error');
     }
 }
-//addNewRecipe(formInputs)
+
 const addNewRecipe = async (recipe, ingredients, instructions) => {
     try {
-        // console.log(ingredients)
         const query = `SET @id = ?; SET @name = ? ; SET @userID = ?; SET @description = ?; SET @level = ?; SET @Servings = ?;
         SET @prepTimeMins = ?; SET @CookingTime = ?;
         call add_or_change_recipe(@id, @name, @userID, @description, @level, @Servings, @prepTimeMins, @CookingTime);`
@@ -151,6 +150,7 @@ const addNewRecipe = async (recipe, ingredients, instructions) => {
         const { CookingTime, Servings, prepTimeMins, recipeName, userId, description, level, categories, diets } = recipe;
         const [newRecipe, fields] = await db.query(query, [0, recipeName, userId, description, level, Servings, prepTimeMins, CookingTime])
         const newRecipeId = await newRecipe.find(element => element.constructor === Array)
+        console.log("id", newRecipeId[0].id);
         const flatingredientsData = ingredients.flatMap(ele => [ele.ingredient.id, ele.unit.id, ele.quantity])
 
         const temp = `(${newRecipeId[0].id},?), `.repeat(categories.length).slice(0, -2)
@@ -166,8 +166,8 @@ const addNewRecipe = async (recipe, ingredients, instructions) => {
          INSERT INTO instructions (recipeId,instruction) VALUES ${temp3};
          INSERT INTO recipeingredients (recipeID, IngredientID, MeasuringUnitID, Quantity) VALUES ${temp4};`
 
-        const t = [...categories, ...diets, ...instructions, ...flatingredientsData]
-        const [moreInfo, fieldsC] = await db.query(categoriesDietsInstructionQuery, [...t]);
+        const allData = [...categories, ...diets, ...instructions, ...flatingredientsData]
+        const [moreInfo, fieldsC] = await db.query(categoriesDietsInstructionQuery, [...allData]);
 
         return newRecipeId[0].id;
     } catch (err) {
@@ -227,6 +227,41 @@ const deleteRecipe = async (id) => {
     }
 }
 
+const updateRecipe = async (id, recipe, ingredients, instructions) => {
+    try {
+        const query = `SET @id = ?; SET @name = ? ; SET @userID = ?; SET @description = ?; SET @level = ?; SET @Servings = ?;
+        SET @prepTimeMins = ?; SET @CookingTime = ?;
+        call add_or_change_recipe(@id, @name, @userID, @description, @level, @Servings, @prepTimeMins, @CookingTime);`
+
+        const deletQuery = `SET @id = ?; CALL delete_only_data_from_linked_tables(@id);`
+
+
+        const { CookingTime, Servings, prepTimeMins, recipeName, userId, description, level, categories, diets } = recipe;
+        const [updateRecipe, fields] = await db.query(query, [id, recipeName, userId, description, level, Servings, prepTimeMins, CookingTime])
+
+        const [deletOldDate, fieldsO] = await db.query(deletQuery, id)
+
+        const flatingredientsData = ingredients.flatMap(ele => [ele.ingredient.id, ele.unit.id, ele.quantity])
+        const temp = `(${id},?), `.repeat(categories.length).slice(0, -2)
+        const temp2 = `(${id},?), `.repeat(diets.length).slice(0, -2)
+        const temp3 = `(${id},?), `.repeat(instructions.length).slice(0, -2)
+        const temp4 = `(${id},?, ?, ?), `.repeat(ingredients.length).slice(0, -2)
+
+        const categoriesDietsInstructionQuery = `INSERT INTO recipecategory (recipeId, CategoryTypeId) VALUES ${temp};
+         INSERT INTO recipediet (recipeId, DietId) VALUES ${temp2};
+         INSERT INTO instructions (recipeId,instruction) VALUES ${temp3};
+         INSERT INTO recipeingredients (recipeID, IngredientID, MeasuringUnitID, Quantity) VALUES ${temp4};`
+
+        const allData = [...categories, ...diets, ...instructions, ...flatingredientsData]
+        const [moreInfo, fieldsC] = await db.query(categoriesDietsInstructionQuery, [...allData]);
+
+        return id;
+    } catch (err) {
+        console.log(err);;
+    }
+}
+
+
 
 module.exports = {
     recipes,
@@ -242,5 +277,6 @@ module.exports = {
     unitsAndIngs,
     addImage,
     deleteRecipe,
-    recipeInfoRow
+    recipeInfoRow,
+    updateRecipe
 }
